@@ -16,8 +16,8 @@ class VacationPlanner:
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", VACATION_PROMPT),
             MessagesPlaceholder(variable_name="chat_history"),
-            # CHANGE: Use {interests} here because it's already inside your VACATION_PROMPT
-            ("human", "{interests}") 
+            # FIX: Rename this to 'user_notes' to avoid name collision with {interests}
+            ("human", "{user_notes}") 
         ])
         
         self.chain = self.prompt | self.llm | StrOutputParser()
@@ -25,18 +25,18 @@ class VacationPlanner:
     def generate_itinerary(self, destination, budget, days, travel_type, interests, chat_history):
         formatted_history = []
         for msg in chat_history:
-            # Fixing the class instantiation here as well
             if msg["role"] == "user":
                 formatted_history.append(HumanMessage(content=msg["content"]))
             else:
                 formatted_history.append(AIMessage(content=msg["content"]))
 
-        # The keys here must match the {} placeholders in your prompt EXACTLY
+        # FIX: We now provide BOTH 'interests' for the prompt and 'user_notes' for the human chat
         return self.chain.invoke({
             "destination": destination,
             "budget": budget,
             "days": days,
             "travel_type": travel_type,
-            "interests": interests,  # This now matches the {interests} in the template
+            "interests": interests,    # This fills {interests} in VACATION_PROMPT
+            "user_notes": interests,   # This fills {user_notes} in the human message
             "chat_history": formatted_history
         })
