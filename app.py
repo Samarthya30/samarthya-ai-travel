@@ -6,131 +6,148 @@ from llm_chain import VacationPlanner
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Samarthya AI | Travel",
+    page_title="Samarthya AI | Travel Architect",
     page_icon="🔥",
     layout="wide"
 )
 
-# --- 2. SAMARTHYA DARK & RED THEME CSS ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #0E1117; color: #FFFFFF; }
+# --- 2. DYNAMIC BACKGROUND & PREMIUM CSS ---
+def apply_styling(query=None):
+    # Default overlay to ensure text readability
+    overlay = "rgba(14, 17, 23, 0.85)"
+    bg_img = ""
     
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .main-block { animation: fadeIn 1.5s ease-out; }
+    if query:
+        # Using a reliable high-res source for destination images
+        bg_url = f"https://images.unsplash.com/photo-1500835595547-751c6606a0cc?auto=format&fit=crop&q=80&w=2000" # Fallback
+        # Unsplash Source is deprecated; we use the keyword-based redirect or a placeholder
+        bg_url = f"https://loremflickr.com/1920/1080/{query},landmark/all"
+        bg_img = f'url("{bg_url}")'
+    
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background: linear-gradient({overlay}, {overlay}), {bg_img};
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: #FFFFFF;
+        }}
+        
+        @keyframes fadeIn {{
+            from {{ opacity: 0; transform: translateY(10px); }}
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+        .main-block {{ animation: fadeIn 1s ease-out; }}
 
-    .brand-text {
-        font-family: 'Orbitron', sans-serif;
-        color: #FF4B4B;
-        font-size: 14px;
-        letter-spacing: 5px;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: -10px;
-    }
+        .brand-text {{
+            font-family: 'Orbitron', sans-serif;
+            color: #FF4B4B;
+            font-size: 14px;
+            letter-spacing: 5px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }}
 
-    /* Red Pulsing Button */
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(255, 75, 75, 0.7); }
-        70% { box-shadow: 0 0 0 15px rgba(255, 75, 75, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(255, 75, 75, 0); }
-    }
+        .stButton>button {{
+            background-color: #FF4B4B !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 5px !important;
+            font-weight: bold !important;
+            transition: 0.3s;
+        }}
+        
+        .stButton>button:hover {{
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(255, 75, 75, 0.4);
+        }}
 
-    .stButton>button {
-        background-color: #FF4B4B !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 5px !important;
-        padding: 0.6rem 2rem !important;
-        font-weight: bold !important;
-        animation: pulse 2s infinite;
-        width: 100%;
-    }
+        section[data-testid="stSidebar"] {{
+            background-color: #050505;
+            border-right: 1px solid #FF4B4B;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
 
-    section[data-testid="stSidebar"] {
-        background-color: #050505;
-        border-right: 1px solid #FF4B4B;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# --- 3. INITIALIZATION & SESSION STATE ---
+load_dotenv()
+api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 
-# --- 3. HELPER FUNCTIONS ---
+if not api_key:
+    st.error("🔑 API Key missing! Set it in your .env or Streamlit Secrets.")
+    st.stop()
+
+planner = VacationPlanner(api_key)
+
+# Initialize Chat History
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 def stream_data(text):
     for word in text.split(" "):
         yield word + " "
         time.sleep(0.01)
 
-# --- 4. INITIALIZATION ---
-load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
-
-if not api_key:
-    st.error("🔑 API Key missing!")
-    st.stop()
-
-planner = VacationPlanner(api_key)
-
-# --- 5. MAIN UI LAYOUT ---
-st.markdown("<div class='main-block'>", unsafe_allow_html=True)
-
-# Top Branding
-st.markdown("<p class='brand-text'>SAMARTHYA VACATION PLANNER</p>", unsafe_allow_html=True)
-st.title("Travel With Me")
-st.write("---")
-
-# Sidebar
+# --- 4. SIDEBAR & INPUTS ---
 with st.sidebar:
-    st.markdown("<h2 style='color:#FF4B4B;'>SAMARTHYA KR.</h2>", unsafe_allow_html=True)
-    st.write("Pushing the boundaries of generative intelligence.")
+    st.markdown("<p class='brand-text'>SAMARTHYA KR.</p>", unsafe_allow_html=True)
+    st.write("Next-Gen AI Travel Architect")
     st.divider()
-    st.caption("Model: Gemini 2.5 Flash")
+    
+    dest = st.text_input("🎯 TARGET DESTINATION", placeholder="e.g. Kyoto, Japan")
+    budget = st.text_input("💳 BUDGET", placeholder="e.g. 4000 USD")
+    days = st.number_input("⏱️ DURATION (DAYS)", 1, 30, 5)
+    style = st.selectbox("🎭 TRIP STYLE", ["Adventure", "Relaxation", "Cultural", "Luxury Elite"])
+    dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Street Food Lover"], default=[])
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        generate_btn = st.button("🚀 ARCHITECT")
+    with col2:
+        if st.button("🗑️ CLEAR"):
+            st.session_state.messages = []
+            st.rerun()
+            
+    if generate_btn:
+        if dest and budget:
+            st.session_state.messages = [] # Reset for new initial plan
+            refined_interests = f"Style: {style}. Dietary: {', '.join(dietary)}."
+            
+            with st.spinner("Constructing Initial Blueprint..."):
+                # Pass history (currently empty) to the stateful planner
+                initial_itinerary = planner.generate_itinerary(dest, budget, days, style, refined_interests, st.session_state.messages)
+                st.session_state.messages.append({"role": "assistant", "content": initial_itinerary})
+        else:
+            st.warning("Input required: Destination & Budget.")
 
-# --- INPUT SECTION ---
-c1, c2 = st.columns(2)
+# Apply dynamic background
+apply_styling(dest if dest else "travel")
 
-with c1:
-    dest = st.text_input("🎯 TARGET DESTINATION", placeholder="e.g. Dubai, UAE")
-    budget = st.text_input("💳 BUDGET ALLOCATION", placeholder="e.g. 5000 USD")
+# --- 5. MAIN CHAT INTERFACE ---
+st.markdown("<div class='main-block'>", unsafe_allow_html=True)
+st.markdown("<p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p>", unsafe_allow_html=True)
+st.title("Bespoke AI Itinerary")
 
-with c2:
-    days = st.number_input("⏱️ DURATION (DAYS)", min_value=1, max_value=30, value=5)
-    style = st.selectbox("🎭 TRIP ARCHITECTURE", ["High-Octane Adventure", "Minimalist Relaxation", "Cultural Immersion", "Luxury Elite"])
+# Display the conversation history
+for message in st.session_state.messages:
+    with st.chat_message(message["role"], avatar="🔴" if message["role"]=="assistant" else None):
+        st.markdown(message["content"])
 
-# --- NEW: USER FRIENDLY QUESTIONS ---
-st.markdown("<h4 style='color:#FF4B4B;'>🍕 CULINARY & LIFESTYLE PREFERENCES</h4>", unsafe_allow_html=True)
-col_a, col_b = st.columns(2)
-
-with col_a:
-    dietary = st.multiselect("Dietary Choices", ["No Preference", "Vegetarian", "Vegan", "Halal", "Gluten-Free"], default="No Preference")
-with col_b:
-    pace = st.select_slider("Trip Pace", options=["Chill", "Balanced", "Fast-Paced"], value="Balanced")
-
-interests = st.text_area("🗒️ SPECIAL REQUIREMENTS / INTERESTS", placeholder="e.g. Photography, hidden speakeasies, tech hubs...")
-
-# --- EXECUTION ---
-if st.button("GENERATE ITINERARY"):
-    if dest and budget:
-        # Combine the new fields into the 'interests' string for the LLM
-        refined_interests = f"Interests: {interests}. Dietary: {', '.join(dietary)}. Pace: {pace}."
-        
-        with st.spinner("⏳ ARCHITECTING YOUR JOURNEY..."):
-            try:
-                # We pass the refined_interests which now contains the food & pace info
-                itinerary = planner.generate_itinerary(dest, budget, days, style, refined_interests)
-                
-                st.markdown("<h3 style='color:#FF4B4B;'>G.E.N.E.R.A.T.E.D  P.L.A.N</h3>", unsafe_allow_html=True)
-                
-                with st.chat_message("assistant", avatar="🔴"):
-                    st.write_stream(stream_data(itinerary))
-                
-                st.download_button("DOWNLOAD ITINERARY", itinerary, file_name=f"{dest}_plan.txt")
-                
-            except Exception as e:
-                st.error(f"SYSTEM_ERR: {e}")
-    else:
-        st.warning("INPUT_ERR: Destination and Budget are mandatory.")
+# Chat Input for Refinement (The "Continuous Chat" part)
+if chat_input := st.chat_input("Suggest edits... (e.g. 'Add more local food' or 'Remove the museum visit')"):
+    # Add User message to state
+    st.session_state.messages.append({"role": "user", "content": chat_input})
+    with st.chat_message("user"):
+        st.markdown(chat_input)
+    
+    # Generate Stateful Output
+    with st.chat_message("assistant", avatar="🔴"):
+        with st.spinner("Modifying Architecture..."):
+            # We pass the current chat_input as the 'interests' and send the whole message history
+            # The memory logic in llm_chain.py will handle the rest!
+            response = planner.generate_itinerary(dest, budget, days, style, f"REVISE: {chat_input}", st.session_state.messages)
+            st.write_stream(stream_data(response))
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
 st.markdown("</div>", unsafe_allow_html=True)
