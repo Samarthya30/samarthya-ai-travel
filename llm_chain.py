@@ -7,13 +7,15 @@ from prompts import VACATION_PROMPT
 
 class VacationPlanner:
     def __init__(self, api_key):
-        # Using Gemini 1.5 Flash for speed and high-context reasoning
+        # Using the direct model name to avoid 404 errors on Streamlit Cloud
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash", 
             google_api_key=api_key,
             temperature=0.7
         )
         
+        # System Prompt contains {destination}, {budget}, {days}, {travel_type}, {interests}
+        # Human Message uses {user_notes} to avoid naming collisions
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", VACATION_PROMPT),
             MessagesPlaceholder(variable_name="chat_history"),
@@ -23,7 +25,7 @@ class VacationPlanner:
         self.chain = self.prompt | self.llm | StrOutputParser()
 
     def generate_itinerary(self, destination, budget, days, travel_type, interests, chat_history):
-        # Format the session state messages into LangChain Message objects
+        # Convert Streamlit session state (dicts) to LangChain Message objects
         formatted_history = []
         for msg in chat_history:
             if msg["role"] == "user":
@@ -32,14 +34,13 @@ class VacationPlanner:
                 formatted_history.append(AIMessage(content=msg["content"]))
 
         # Execute Chain
-        # Note: 'interests' fills the {interests} slot in the System Prompt
-        # 'user_notes' fills the {user_notes} slot in the Human Message
+        # We map 'interests' (from app.py) to both the prompt variable and the human message
         return self.chain.invoke({
             "destination": destination,
             "budget": budget,
             "days": days,
             "travel_type": travel_type,
-            "interests": interests,    
-            "user_notes": interests,   
+            "interests": interests,    # Fills {interests} in VACATION_PROMPT
+            "user_notes": interests,   # Fills {user_notes} in the human template
             "chat_history": formatted_history
         })

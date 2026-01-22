@@ -22,7 +22,7 @@ def apply_styling():
             color: #FFFFFF;
         }
         
-        /* Glassmorphism Main Container */
+        /* Glassmorphism Main Container - Content ONLY */
         .main-block {
             background: rgba(15, 15, 15, 0.7);
             border: 1px solid rgba(255, 75, 75, 0.2);
@@ -30,13 +30,19 @@ def apply_styling():
             border-radius: 20px;
             backdrop-filter: blur(15px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-            margin-top: 20px;
+            margin-top: 10px;
             animation: fadeIn 1.2s ease-out;
         }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Branding Text outside the box */
+        .brand-header {
+            text-align: center;
+            padding: 20px 0;
         }
 
         .brand-text {
@@ -47,6 +53,7 @@ def apply_styling():
             font-weight: bold;
             text-transform: uppercase;
             text-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
+            margin: 0;
         }
 
         /* Neon Red Primary Buttons */
@@ -76,7 +83,7 @@ def apply_styling():
         }
 
         /* Input Field Styling */
-        input, textarea, .stSelectbox {
+        input, textarea, [data-baseweb="select"] {
             background-color: #121212 !important;
             color: white !important;
             border-radius: 8px !important;
@@ -120,7 +127,6 @@ with st.sidebar:
     style = st.selectbox("🎭 TRIP STYLE", ["Adventure", "Relaxation", "Cultural", "Luxury Elite"])
     dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Gluten-Free"], default=[])
     
-    # This is the "Brain" of the conversation
     user_notes = st.text_area("🗒️ SPECIAL REQUIREMENTS / EDITS", 
                                placeholder="Example: 'Vegan food only' or 'Make Day 2 more relaxed' or 'Extend to 7 days'",
                                height=150)
@@ -129,18 +135,14 @@ with st.sidebar:
     
     if st.button("🚀 ARCHITECT ITINERARY"):
         if dest and budget:
-            # Consolidate dietary and notes for the LLM
             diet_info = f"Dietary: {', '.join(dietary)}." if dietary else ""
             full_instruction = f"{user_notes} {diet_info}".strip()
             
             with st.spinner("⏳ Re-Engineering your blueprint..."):
                 try:
-                    # Logic: Passes everything to the chain, including current chat history
                     response = planner.generate_itinerary(
                         dest, budget, days, style, full_instruction, st.session_state.messages
                     )
-                    
-                    # Update Session History
                     st.session_state.messages.append({"role": "user", "content": full_instruction})
                     st.session_state.messages.append({"role": "assistant", "content": response})
                 except Exception as e:
@@ -153,13 +155,13 @@ with st.sidebar:
         st.rerun()
 
 # --- 5. MAIN DISPLAY ---
+# Brand text OUTSIDE the main block to avoid the "box" look
+st.markdown("<div class='brand-header'><p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p></div>", unsafe_allow_html=True)
+
 st.markdown("<div class='main-block'>", unsafe_allow_html=True)
-st.markdown("<p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p>", unsafe_allow_html=True)
 st.title("Bespoke AI Architecture")
 
 if st.session_state.messages:
-    # Always grab the most recent assistant response for display
-    # This ensures edits appear as the "new" single plan
     latest_plan = [msg for msg in st.session_state.messages if msg["role"] == "assistant"][-1]["content"]
     
     with st.chat_message("assistant", avatar="🔴"):
