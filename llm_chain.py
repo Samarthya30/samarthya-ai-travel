@@ -7,11 +7,13 @@ from prompts import VACATION_PROMPT
 
 class VacationPlanner:
     def __init__(self, api_key):
-        # We use 'gemini-1.5-flash-latest' to ensure it hits the current stable API
+        # We are using the most stable naming convention
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash-latest", 
+            model="gemini-1.5-flash", 
             google_api_key=api_key,
-            temperature=0.7
+            temperature=0.7,
+            # Force the library to use a modern transport layer
+            transport="rest" 
         )
         
         self.prompt = ChatPromptTemplate.from_messages([
