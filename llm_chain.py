@@ -6,24 +6,25 @@ from prompts import VACATION_PROMPT
 
 class VacationPlanner:
     def __init__(self, api_key):
-        # Initialize Gemini 2.5 Flash
+        # Using Gemini 3 Flash (the latest 2026 stable version)
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash", 
+            model="gemini-3-flash-preview", 
             google_api_key=api_key,
             temperature=0.7
         )
         
+        # Updated input_variables to include 'dietary' and 'pace'
         self.prompt = PromptTemplate(
             input_variables=["destination", "budget", "days", "travel_type", "interests"],
             template=VACATION_PROMPT
         )
         
-        # This is the modern way to "chain" things in 2026 (LCEL)
-        # It means: Prompt -> LLM -> Convert output to string
+        # Modern LCEL Chain
         self.chain = self.prompt | self.llm | StrOutputParser()
 
     def generate_itinerary(self, destination, budget, days, travel_type, interests):
-        # We use .invoke instead of .run in modern LangChain
+        # 'interests' here will now be the 'refined_interests' string from app.py
+        # which already contains the food and pace details.
         return self.chain.invoke({
             "destination": destination,
             "budget": budget,

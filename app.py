@@ -14,22 +14,14 @@ st.set_page_config(
 # --- 2. SAMARTHYA DARK & RED THEME CSS ---
 st.markdown("""
     <style>
-    /* Global Background */
-    .stApp {
-        background-color: #0E1117;
-        color: #FFFFFF;
-    }
-
-    /* Animation for Content Fade-in */
+    .stApp { background-color: #0E1117; color: #FFFFFF; }
+    
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    .main-block {
-        animation: fadeIn 1.5s ease-out;
-    }
+    .main-block { animation: fadeIn 1.5s ease-out; }
 
-    /* Samarthya Branding Header */
     .brand-text {
         font-family: 'Orbitron', sans-serif;
         color: #FF4B4B;
@@ -38,14 +30,6 @@ st.markdown("""
         font-weight: bold;
         text-transform: uppercase;
         margin-bottom: -10px;
-    }
-
-    /* Glass Cards for Inputs */
-    div[data-testid="stVerticalBlock"] > div:has(div.stTextInput) {
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 75, 75, 0.2);
-        border-radius: 12px;
-        padding: 25px;
     }
 
     /* Red Pulsing Button */
@@ -66,17 +50,9 @@ st.markdown("""
         width: 100%;
     }
 
-    /* Customizing sidebar */
     section[data-testid="stSidebar"] {
         background-color: #050505;
         border-right: 1px solid #FF4B4B;
-    }
-
-    /* Success message styling */
-    .stSuccess {
-        background-color: rgba(255, 75, 75, 0.1);
-        color: #FF4B4B;
-        border: 1px solid #FF4B4B;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -111,9 +87,8 @@ with st.sidebar:
     st.write("Pushing the boundaries of generative intelligence.")
     st.divider()
     st.caption("Model: Gemini 2.5 Flash")
-    st.caption("Environment: Production")
 
-# Columns for Inputs
+# --- INPUT SECTION ---
 c1, c2 = st.columns(2)
 
 with c1:
@@ -124,16 +99,27 @@ with c2:
     days = st.number_input("⏱️ DURATION (DAYS)", min_value=1, max_value=30, value=5)
     style = st.selectbox("🎭 TRIP ARCHITECTURE", ["High-Octane Adventure", "Minimalist Relaxation", "Cultural Immersion", "Luxury Elite"])
 
-interests = st.text_area("🗒️ SPECIAL REQUIREMENTS / INTERESTS", placeholder="Hiking, fine dining, tech hubs...")
+# --- NEW: USER FRIENDLY QUESTIONS ---
+st.markdown("<h4 style='color:#FF4B4B;'>🍕 CULINARY & LIFESTYLE PREFERENCES</h4>", unsafe_allow_html=True)
+col_a, col_b = st.columns(2)
 
-st.write(" ") # Spacer
+with col_a:
+    dietary = st.multiselect("Dietary Choices", ["No Preference", "Vegetarian", "Vegan", "Halal", "Gluten-Free"], default="No Preference")
+with col_b:
+    pace = st.select_slider("Trip Pace", options=["Chill", "Balanced", "Fast-Paced"], value="Balanced")
 
-# Execution
+interests = st.text_area("🗒️ SPECIAL REQUIREMENTS / INTERESTS", placeholder="e.g. Photography, hidden speakeasies, tech hubs...")
+
+# --- EXECUTION ---
 if st.button("GENERATE ITINERARY"):
-    if dest and budget and interests:
-        with st.spinner("Generating Itinerary..."):
+    if dest and budget:
+        # Combine the new fields into the 'interests' string for the LLM
+        refined_interests = f"Interests: {interests}. Dietary: {', '.join(dietary)}. Pace: {pace}."
+        
+        with st.spinner("⏳ ARCHITECTING YOUR JOURNEY..."):
             try:
-                itinerary = planner.generate_itinerary(dest, budget, days, style, interests)
+                # We pass the refined_interests which now contains the food & pace info
+                itinerary = planner.generate_itinerary(dest, budget, days, style, refined_interests)
                 
                 st.markdown("<h3 style='color:#FF4B4B;'>G.E.N.E.R.A.T.E.D  P.L.A.N</h3>", unsafe_allow_html=True)
                 
@@ -145,6 +131,6 @@ if st.button("GENERATE ITINERARY"):
             except Exception as e:
                 st.error(f"SYSTEM_ERR: {e}")
     else:
-        st.warning("INPUT_ERR: Please fill all data points.")
+        st.warning("INPUT_ERR: Destination and Budget are mandatory.")
 
 st.markdown("</div>", unsafe_allow_html=True)
