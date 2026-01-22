@@ -1,5 +1,5 @@
 streamlit
 langchain
-langchain-google-genai
+langchain-google-genai>=2.0.0
 python-dotenv
 fpdf2

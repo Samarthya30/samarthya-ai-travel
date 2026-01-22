@@ -7,15 +7,17 @@ from prompts import VACATION_PROMPT
 
 class VacationPlanner:
     def __init__(self, api_key):
-        # Using the direct model name to avoid 404 errors on Streamlit Cloud
+        # We use 'gemini-1.5-flash' which is the stable production ID.
+        # Ensure your requirements.txt has: langchain-google-genai>=2.0.0
         self.llm = ChatGoogleGenerativeAI(
             model="gemini-1.5-flash", 
             google_api_key=api_key,
-            temperature=0.7
+            temperature=0.7,
+            # This ensures the model uses the correct API version internally
+            convert_system_message_to_human=True 
         )
         
         # System Prompt contains {destination}, {budget}, {days}, {travel_type}, {interests}
-        # Human Message uses {user_notes} to avoid naming collisions
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", VACATION_PROMPT),
             MessagesPlaceholder(variable_name="chat_history"),
@@ -30,17 +32,17 @@ class VacationPlanner:
         for msg in chat_history:
             if msg["role"] == "user":
                 formatted_history.append(HumanMessage(content=msg["content"]))
-            else:
+            elif msg["role"] == "assistant":
                 formatted_history.append(AIMessage(content=msg["content"]))
 
         # Execute Chain
-        # We map 'interests' (from app.py) to both the prompt variable and the human message
+        # Mapping 'interests' to both the logic block and the current human query
         return self.chain.invoke({
             "destination": destination,
             "budget": budget,
             "days": days,
             "travel_type": travel_type,
-            "interests": interests,    # Fills {interests} in VACATION_PROMPT
-            "user_notes": interests,   # Fills {user_notes} in the human template
+            "interests": interests,    # For the logic in the system prompt
+            "user_notes": interests,   # For the latest user request
             "chat_history": formatted_history
         })
