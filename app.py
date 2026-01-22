@@ -4,103 +4,79 @@ import time
 from dotenv import load_dotenv
 from llm_chain import VacationPlanner
 
-# --- 1. PAGE CONFIGURATION ---
+# --------------------------------------------------
+# 1. PAGE CONFIG
+# --------------------------------------------------
 st.set_page_config(
     page_title="Samarthya AI | Travel Architect",
     page_icon="🔥",
     layout="wide"
 )
 
-# --- 2. PREMIUM DARK & RED CSS ---
+# --------------------------------------------------
+# 2. STYLING
+# --------------------------------------------------
 def apply_styling():
     st.markdown("""
         <style>
-        /* Global Background: Deep Black & Subtle Red Radial Gradient */
         .stApp {
             background: radial-gradient(circle at top right, #2b0000, #050505 60%);
-            background-color: #050505;
             color: #FFFFFF;
         }
-        
-        /* Glassmorphism Main Container - Content ONLY */
+
         .main-block {
             background: rgba(15, 15, 15, 0.7);
             border: 1px solid rgba(255, 75, 75, 0.2);
             padding: 40px;
             border-radius: 20px;
             backdrop-filter: blur(15px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
-            margin-top: 10px;
-            animation: fadeIn 1.2s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Branding Text outside the box */
-        .brand-header {
-            text-align: center;
-            padding: 20px 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            animation: fadeIn 1s ease-out;
         }
 
         .brand-text {
-            font-family: 'Orbitron', sans-serif;
-            color: #FF4B4B;
+            text-align: center;
             font-size: 14px;
             letter-spacing: 6px;
+            color: #FF4B4B;
             font-weight: bold;
-            text-transform: uppercase;
-            text-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
-            margin: 0;
         }
 
-        /* Neon Red Primary Buttons */
         .stButton>button {
             background: linear-gradient(90deg, #8b0000, #FF4B4B) !important;
             color: white !important;
-            border: none !important;
             border-radius: 10px !important;
             height: 48px !important;
-            font-weight: bold !important;
-            letter-spacing: 1.5px !important;
-            box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
-            transition: 0.4s all ease;
+            font-weight: bold;
             width: 100%;
         }
-        
-        .stButton>button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(255, 75, 75, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        }
 
-        /* Sidebar Customization */
         section[data-testid="stSidebar"] {
             background-color: #000000 !important;
             border-right: 1px solid #FF4B4B;
         }
 
-        /* Input Field Styling */
         input, textarea, [data-baseweb="select"] {
             background-color: #121212 !important;
             color: white !important;
-            border-radius: 8px !important;
         }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-thumb { background: #FF4B4B; border-radius: 10px; }
+        @keyframes fadeIn {
+            from {opacity: 0; transform: translateY(15px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
         </style>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# --- 3. INITIALIZATION ---
+# --------------------------------------------------
+# 3. INIT
+# --------------------------------------------------
+apply_styling()
 load_dotenv()
-api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 
+api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 if not api_key:
-    st.error("🔑 API Key missing! Check your environment variables.")
+    st.error("🔑 GOOGLE_API_KEY missing")
     st.stop()
 
 planner = VacationPlanner(api_key)
@@ -108,73 +84,93 @@ planner = VacationPlanner(api_key)
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-def stream_data(text):
-    for word in text.split(" "):
+def fake_stream(text):
+    for word in text.split():
         yield word + " "
         time.sleep(0.01)
 
-# --- 4. SIDEBAR LOGIC ---
-apply_styling()
-
+# --------------------------------------------------
+# 4. SIDEBAR INPUTS
+# --------------------------------------------------
 with st.sidebar:
     st.markdown("<p class='brand-text'>SAMARTHYA KR.</p>", unsafe_allow_html=True)
     st.write("Next-Gen AI Travel Architect")
     st.divider()
-    
-    dest = st.text_input("🎯 TARGET DESTINATION", placeholder="e.g. Paris, France")
-    budget = st.text_input("💳 TOTAL BUDGET", placeholder="e.g. 5000 USD")
-    days = st.number_input("⏱️ DURATION (DAYS)", 1, 30, 5)
-    style = st.selectbox("🎭 TRIP STYLE", ["Adventure", "Relaxation", "Cultural", "Luxury Elite"])
-    dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Gluten-Free"], default=[])
-    
-    user_notes = st.text_area("🗒️ SPECIAL REQUIREMENTS / EDITS", 
-                               placeholder="Example: 'Vegan food only' or 'Make Day 2 more relaxed' or 'Extend to 7 days'",
-                               height=150)
-    
-    st.write(" ")
-    
+
+    destination = st.text_input("🎯 DESTINATION", placeholder="Paris, France")
+    budget = st.text_input("💳 BUDGET", placeholder="5000 USD")
+    days = st.number_input("⏱️ DAYS", min_value=1, max_value=30, value=5)
+    travel_style = st.selectbox(
+        "🎭 TRAVEL STYLE",
+        ["Adventure", "Relaxation", "Cultural", "Luxury Elite"]
+    )
+    dietary = st.multiselect(
+        "🍴 DIETARY",
+        ["Vegetarian", "Vegan", "Halal", "Gluten-Free"]
+    )
+
+    user_notes = st.text_area(
+        "🗒️ SPECIAL REQUESTS",
+        placeholder="Example: Vegan food only, slow pace on Day 2",
+        height=140
+    )
+
     if st.button("🚀 ARCHITECT ITINERARY"):
-        if dest and budget:
-            diet_info = f"Dietary: {', '.join(dietary)}." if dietary else ""
-            full_instruction = f"{user_notes} {diet_info}".strip()
-            
-            with st.spinner("⏳ Re-Engineering your blueprint..."):
+        if not destination or not budget:
+            st.warning("Destination and budget are required.")
+        else:
+            dietary_info = f"Dietary preferences: {', '.join(dietary)}." if dietary else ""
+            final_notes = f"{user_notes}\n{dietary_info}".strip()
+
+            with st.spinner("⏳ Designing your journey..."):
                 try:
                     response = planner.generate_itinerary(
-                        dest, budget, days, style, full_instruction, st.session_state.messages
+                        destination=destination,
+                        budget=budget,
+                        days=days,
+                        travel_type=travel_style,
+                        interests=final_notes,
+                        chat_history=st.session_state.messages
                     )
-                    st.session_state.messages.append({"role": "user", "content": full_instruction})
-                    st.session_state.messages.append({"role": "assistant", "content": response})
-                except Exception as e:
-                    st.error(f"ENGINE_ERR: {str(e)}")
-        else:
-            st.warning("Destination and Budget are required to begin.")
 
-    if st.button("🗑️ RESET SYSTEM"):
+                    st.session_state.messages.append({
+                        "role": "user",
+                        "content": final_notes
+                    })
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": response
+                    })
+
+                except Exception as e:
+                    st.error(f"ENGINE_ERR: {e}")
+
+    if st.button("🗑️ RESET"):
         st.session_state.messages = []
         st.rerun()
 
-# --- 5. MAIN DISPLAY ---
-# Brand text OUTSIDE the main block to avoid the "box" look
-st.markdown("<div class='brand-header'><p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p></div>", unsafe_allow_html=True)
-
+# --------------------------------------------------
+# 5. MAIN OUTPUT
+# --------------------------------------------------
+st.markdown("<p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p>", unsafe_allow_html=True)
 st.markdown("<div class='main-block'>", unsafe_allow_html=True)
+
 st.title("Bespoke AI Architecture")
 
 if st.session_state.messages:
-    latest_plan = [msg for msg in st.session_state.messages if msg["role"] == "assistant"][-1]["content"]
-    
+    last_answer = [m for m in st.session_state.messages if m["role"] == "assistant"][-1]["content"]
+
     with st.chat_message("assistant", avatar="🔴"):
-        st.write_stream(stream_data(latest_plan))
-    
-    st.write("---")
+        st.write_stream(fake_stream(last_answer))
+
+    st.divider()
     st.download_button(
-        label="📩 DOWNLOAD ARCHITECTURAL PLAN",
-        data=latest_plan,
-        file_name=f"Samarthya_{dest}_Plan.txt",
+        "📩 DOWNLOAD PLAN",
+        data=last_answer,
+        file_name=f"{destination}_Travel_Plan.txt",
         mime="text/plain"
     )
 else:
-    st.info("👋 Enter your travel parameters in the sidebar and click **ARCHITECT** to generate your bespoke plan.")
+    st.info("👈 Enter details in the sidebar and click **ARCHITECT ITINERARY**")
 
 st.markdown("</div>", unsafe_allow_html=True)

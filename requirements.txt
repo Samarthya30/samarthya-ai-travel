@@ -1,5 +1,6 @@
-streamlit
-langchain
+streamlit>=1.31
+langchain>=0.2.6
+langchain-core>=0.2.6
 langchain-google-genai==2.0.1
 python-dotenv
 fpdf2
