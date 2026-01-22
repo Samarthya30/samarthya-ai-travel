@@ -13,15 +13,12 @@ st.set_page_config(
 
 # --- 2. DYNAMIC BACKGROUND & PREMIUM CSS ---
 def apply_styling(query=None):
-    # Default overlay to ensure text readability
     overlay = "rgba(14, 17, 23, 0.85)"
     bg_img = ""
     
     if query:
-        # Using a reliable high-res source for destination images
-        bg_url = f"https://images.unsplash.com/photo-1500835595547-751c6606a0cc?auto=format&fit=crop&q=80&w=2000" # Fallback
-        # Unsplash Source is deprecated; we use the keyword-based redirect or a placeholder
-        bg_url = f"https://loremflickr.com/1920/1080/{query},landmark/all"
+        # Using loremflickr for stable keyword-based images
+        bg_url = f"https://loremflickr.com/1920/1080/{query},travel/all"
         bg_img = f'url("{bg_url}")'
     
     st.markdown(f"""
@@ -56,6 +53,7 @@ def apply_styling(query=None):
             border-radius: 5px !important;
             font-weight: bold !important;
             transition: 0.3s;
+            width: 100%;
         }}
         
         .stButton>button:hover {{
@@ -75,12 +73,11 @@ load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 
 if not api_key:
-    st.error("🔑 API Key missing! Set it in your .env or Streamlit Secrets.")
+    st.error("🔑 API Key missing!")
     st.stop()
 
 planner = VacationPlanner(api_key)
 
-# Initialize Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -89,65 +86,67 @@ def stream_data(text):
         yield word + " "
         time.sleep(0.01)
 
-# --- 4. SIDEBAR & INPUTS ---
+# --- 4. SIDEBAR & CONSOLIDATED INPUTS ---
 with st.sidebar:
     st.markdown("<p class='brand-text'>SAMARTHYA KR.</p>", unsafe_allow_html=True)
     st.write("Next-Gen AI Travel Architect")
     st.divider()
     
-    dest = st.text_input("🎯 TARGET DESTINATION", placeholder="e.g. Kyoto, Japan")
+    dest = st.text_input("🎯 DESTINATION", placeholder="e.g. Kyoto, Japan")
     budget = st.text_input("💳 BUDGET", placeholder="e.g. 4000 USD")
     days = st.number_input("⏱️ DURATION (DAYS)", 1, 30, 5)
     style = st.selectbox("🎭 TRIP STYLE", ["Adventure", "Relaxation", "Cultural", "Luxury Elite"])
     dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Street Food Lover"], default=[])
     
-    col1, col2 = st.columns(2)
-    with col1:
-        generate_btn = st.button("🚀 ARCHITECT")
-    with col2:
-        if st.button("🗑️ CLEAR"):
-            st.session_state.messages = []
-            st.rerun()
-            
-    if generate_btn:
+    # Combined field for initial interests and future edits
+    user_input = st.text_area("🗒️ SPECIAL REQUIREMENTS / EDITS", 
+                               placeholder="Initial: 'Vegan food, photography'\nFollow-up: 'Remove Day 2' or 'Add a museum'")
+    
+    st.write(" ")
+    
+    # SINGLE PRIMARY ACTION BUTTON
+    if st.button("🚀 ARCHITECT ITINERARY"):
         if dest and budget:
-            st.session_state.messages = [] # Reset for new initial plan
-            refined_interests = f"Style: {style}. Dietary: {', '.join(dietary)}."
+            # Prepare contextual instructions
+            dietary_str = f"Dietary: {', '.join(dietary)}." if dietary else ""
+            instruction = f"{user_input}. {dietary_str}".strip()
             
-            with st.spinner("Constructing Initial Blueprint..."):
-                # Pass history (currently empty) to the stateful planner
-                initial_itinerary = planner.generate_itinerary(dest, budget, days, style, refined_interests, st.session_state.messages)
-                st.session_state.messages.append({"role": "assistant", "content": initial_itinerary})
+            with st.spinner("⏳ Re-Engineering your blueprint..."):
+                try:
+                    # Generate response using memory
+                    response = planner.generate_itinerary(dest, budget, days, style, instruction, st.session_state.messages)
+                    
+                    # Update History
+                    st.session_state.messages.append({"role": "user", "content": instruction})
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                except Exception as e:
+                    st.error(f"SYSTEM_ERR: {e}")
         else:
-            st.warning("Input required: Destination & Budget.")
+            st.warning("Please fill Destination and Budget.")
 
-# Apply dynamic background
+    if st.button("🗑️ RESET ENGINE"):
+        st.session_state.messages = []
+        st.rerun()
+
+# Apply Dynamic Styling
 apply_styling(dest if dest else "travel")
 
-# --- 5. MAIN CHAT INTERFACE ---
+# --- 5. MAIN INTERFACE ---
 st.markdown("<div class='main-block'>", unsafe_allow_html=True)
 st.markdown("<p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p>", unsafe_allow_html=True)
 st.title("Bespoke AI Itinerary")
 
-# Display the conversation history
-for message in st.session_state.messages:
-    with st.chat_message(message["role"], avatar="🔴" if message["role"]=="assistant" else None):
-        st.markdown(message["content"])
-
-# Chat Input for Refinement (The "Continuous Chat" part)
-if chat_input := st.chat_input("Suggest edits... (e.g. 'Add more local food' or 'Remove the museum visit')"):
-    # Add User message to state
-    st.session_state.messages.append({"role": "user", "content": chat_input})
-    with st.chat_message("user"):
-        st.markdown(chat_input)
+# --- 6. DISPLAY LOGIC ---
+# Only show the latest itinerary to keep it clean, or show the whole chat history
+if st.session_state.messages:
+    # We display the last assistant response as the "Current Plan"
+    latest_plan = [msg for msg in st.session_state.messages if msg["role"] == "assistant"][-1]["content"]
     
-    # Generate Stateful Output
     with st.chat_message("assistant", avatar="🔴"):
-        with st.spinner("Modifying Architecture..."):
-            # We pass the current chat_input as the 'interests' and send the whole message history
-            # The memory logic in llm_chain.py will handle the rest!
-            response = planner.generate_itinerary(dest, budget, days, style, f"REVISE: {chat_input}", st.session_state.messages)
-            st.write_stream(stream_data(response))
-            st.session_state.messages.append({"role": "assistant", "content": response})
+        st.write_stream(stream_data(latest_plan))
+    
+    st.download_button("📩 DOWNLOAD CURRENT PLAN", latest_plan, file_name=f"{dest}_plan.txt")
+else:
+    st.info("👋 Enter your details in the sidebar and click 'ARCHITECT' to begin your journey.")
 
 st.markdown("</div>", unsafe_allow_html=True)
