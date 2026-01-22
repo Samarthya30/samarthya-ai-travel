@@ -11,69 +11,89 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. DYNAMIC BACKGROUND & PREMIUM CSS ---
-def apply_styling(query=None):
-    overlay = "rgba(14, 17, 23, 0.85)"
-    bg_img = ""
-    
-    if query:
-        # Using loremflickr for stable keyword-based images
-        bg_url = f"https://loremflickr.com/1920/1080/{query},travel/all"
-        bg_img = f'url("{bg_url}")'
-    
-    st.markdown(f"""
+# --- 2. PREMIUM DARK & RED CSS ---
+def apply_styling():
+    st.markdown("""
         <style>
-        .stApp {{
-            background: linear-gradient({overlay}, {overlay}), {bg_img};
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+        /* Global Background: Deep Black & Subtle Red Radial Gradient */
+        .stApp {
+            background: radial-gradient(circle at top right, #2b0000, #050505 60%);
+            background-color: #050505;
             color: #FFFFFF;
-        }}
+        }
         
-        @keyframes fadeIn {{
-            from {{ opacity: 0; transform: translateY(10px); }}
-            to {{ opacity: 1; transform: translateY(0); }}
-        }}
-        .main-block {{ animation: fadeIn 1s ease-out; }}
+        /* Glassmorphism Main Container */
+        .main-block {
+            background: rgba(15, 15, 15, 0.7);
+            border: 1px solid rgba(255, 75, 75, 0.2);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            margin-top: 20px;
+            animation: fadeIn 1.2s ease-out;
+        }
 
-        .brand-text {{
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .brand-text {
             font-family: 'Orbitron', sans-serif;
             color: #FF4B4B;
             font-size: 14px;
-            letter-spacing: 5px;
+            letter-spacing: 6px;
             font-weight: bold;
             text-transform: uppercase;
-        }}
+            text-shadow: 0 0 15px rgba(255, 75, 75, 0.5);
+        }
 
-        .stButton>button {{
-            background-color: #FF4B4B !important;
+        /* Neon Red Primary Buttons */
+        .stButton>button {
+            background: linear-gradient(90deg, #8b0000, #FF4B4B) !important;
             color: white !important;
             border: none !important;
-            border-radius: 5px !important;
+            border-radius: 10px !important;
+            height: 48px !important;
             font-weight: bold !important;
-            transition: 0.3s;
+            letter-spacing: 1.5px !important;
+            box-shadow: 0 4px 15px rgba(255, 75, 75, 0.3);
+            transition: 0.4s all ease;
             width: 100%;
-        }}
+        }
         
-        .stButton>button:hover {{
-            transform: scale(1.02);
-            box-shadow: 0 0 15px rgba(255, 75, 75, 0.4);
-        }}
+        .stButton>button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 75, 75, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
 
-        section[data-testid="stSidebar"] {{
-            background-color: #050505;
+        /* Sidebar Customization */
+        section[data-testid="stSidebar"] {
+            background-color: #000000 !important;
             border-right: 1px solid #FF4B4B;
-        }}
+        }
+
+        /* Input Field Styling */
+        input, textarea, .stSelectbox {
+            background-color: #121212 !important;
+            color: white !important;
+            border-radius: 8px !important;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #FF4B4B; border-radius: 10px; }
         </style>
         """, unsafe_allow_html=True)
 
-# --- 3. INITIALIZATION & SESSION STATE ---
+# --- 3. INITIALIZATION ---
 load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY") or st.secrets.get("GOOGLE_API_KEY")
 
 if not api_key:
-    st.error("🔑 API Key missing!")
+    st.error("🔑 API Key missing! Check your environment variables.")
     st.stop()
 
 planner = VacationPlanner(api_key)
@@ -86,67 +106,73 @@ def stream_data(text):
         yield word + " "
         time.sleep(0.01)
 
-# --- 4. SIDEBAR & CONSOLIDATED INPUTS ---
+# --- 4. SIDEBAR LOGIC ---
+apply_styling()
+
 with st.sidebar:
     st.markdown("<p class='brand-text'>SAMARTHYA KR.</p>", unsafe_allow_html=True)
     st.write("Next-Gen AI Travel Architect")
     st.divider()
     
-    dest = st.text_input("🎯 DESTINATION", placeholder="e.g. Kyoto, Japan")
-    budget = st.text_input("💳 BUDGET", placeholder="e.g. 4000 USD")
+    dest = st.text_input("🎯 TARGET DESTINATION", placeholder="e.g. Paris, France")
+    budget = st.text_input("💳 TOTAL BUDGET", placeholder="e.g. 5000 USD")
     days = st.number_input("⏱️ DURATION (DAYS)", 1, 30, 5)
     style = st.selectbox("🎭 TRIP STYLE", ["Adventure", "Relaxation", "Cultural", "Luxury Elite"])
-    dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Street Food Lover"], default=[])
+    dietary = st.multiselect("🍴 DIETARY", ["Vegetarian", "Vegan", "Halal", "Gluten-Free"], default=[])
     
-    # Combined field for initial interests and future edits
-    user_input = st.text_area("🗒️ SPECIAL REQUIREMENTS / EDITS", 
-                               placeholder="Initial: 'Vegan food, photography'\nFollow-up: 'Remove Day 2' or 'Add a museum'")
+    # This is the "Brain" of the conversation
+    user_notes = st.text_area("🗒️ SPECIAL REQUIREMENTS / EDITS", 
+                               placeholder="Example: 'Vegan food only' or 'Make Day 2 more relaxed' or 'Extend to 7 days'",
+                               height=150)
     
     st.write(" ")
     
-    # SINGLE PRIMARY ACTION BUTTON
     if st.button("🚀 ARCHITECT ITINERARY"):
         if dest and budget:
-            # Prepare contextual instructions
-            dietary_str = f"Dietary: {', '.join(dietary)}." if dietary else ""
-            instruction = f"{user_input}. {dietary_str}".strip()
+            # Consolidate dietary and notes for the LLM
+            diet_info = f"Dietary: {', '.join(dietary)}." if dietary else ""
+            full_instruction = f"{user_notes} {diet_info}".strip()
             
             with st.spinner("⏳ Re-Engineering your blueprint..."):
                 try:
-                    # Generate response using memory
-                    response = planner.generate_itinerary(dest, budget, days, style, instruction, st.session_state.messages)
+                    # Logic: Passes everything to the chain, including current chat history
+                    response = planner.generate_itinerary(
+                        dest, budget, days, style, full_instruction, st.session_state.messages
+                    )
                     
-                    # Update History
-                    st.session_state.messages.append({"role": "user", "content": instruction})
+                    # Update Session History
+                    st.session_state.messages.append({"role": "user", "content": full_instruction})
                     st.session_state.messages.append({"role": "assistant", "content": response})
                 except Exception as e:
-                    st.error(f"SYSTEM_ERR: {e}")
+                    st.error(f"ENGINE_ERR: {str(e)}")
         else:
-            st.warning("Please fill Destination and Budget.")
+            st.warning("Destination and Budget are required to begin.")
 
-    if st.button("🗑️ RESET ENGINE"):
+    if st.button("🗑️ RESET SYSTEM"):
         st.session_state.messages = []
         st.rerun()
 
-# Apply Dynamic Styling
-apply_styling(dest if dest else "travel")
-
-# --- 5. MAIN INTERFACE ---
+# --- 5. MAIN DISPLAY ---
 st.markdown("<div class='main-block'>", unsafe_allow_html=True)
 st.markdown("<p class='brand-text'>SAMARTHYA TRAVEL ENGINE</p>", unsafe_allow_html=True)
-st.title("Bespoke AI Itinerary")
+st.title("Bespoke AI Architecture")
 
-# --- 6. DISPLAY LOGIC ---
-# Only show the latest itinerary to keep it clean, or show the whole chat history
 if st.session_state.messages:
-    # We display the last assistant response as the "Current Plan"
+    # Always grab the most recent assistant response for display
+    # This ensures edits appear as the "new" single plan
     latest_plan = [msg for msg in st.session_state.messages if msg["role"] == "assistant"][-1]["content"]
     
     with st.chat_message("assistant", avatar="🔴"):
         st.write_stream(stream_data(latest_plan))
     
-    st.download_button("📩 DOWNLOAD CURRENT PLAN", latest_plan, file_name=f"{dest}_plan.txt")
+    st.write("---")
+    st.download_button(
+        label="📩 DOWNLOAD ARCHITECTURAL PLAN",
+        data=latest_plan,
+        file_name=f"Samarthya_{dest}_Plan.txt",
+        mime="text/plain"
+    )
 else:
-    st.info("👋 Enter your details in the sidebar and click 'ARCHITECT' to begin your journey.")
+    st.info("👋 Enter your travel parameters in the sidebar and click **ARCHITECT** to generate your bespoke plan.")
 
 st.markdown("</div>", unsafe_allow_html=True)

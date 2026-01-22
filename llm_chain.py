@@ -7,8 +7,9 @@ from prompts import VACATION_PROMPT
 
 class VacationPlanner:
     def __init__(self, api_key):
+        # Using Gemini 1.5 Flash for speed and high-context reasoning
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-3-flash-preview", 
+            model="gemini-1.5-flash", 
             google_api_key=api_key,
             temperature=0.7
         )
@@ -16,13 +17,13 @@ class VacationPlanner:
         self.prompt = ChatPromptTemplate.from_messages([
             ("system", VACATION_PROMPT),
             MessagesPlaceholder(variable_name="chat_history"),
-            # FIX: Rename this to 'user_notes' to avoid name collision with {interests}
             ("human", "{user_notes}") 
         ])
         
         self.chain = self.prompt | self.llm | StrOutputParser()
 
     def generate_itinerary(self, destination, budget, days, travel_type, interests, chat_history):
+        # Format the session state messages into LangChain Message objects
         formatted_history = []
         for msg in chat_history:
             if msg["role"] == "user":
@@ -30,13 +31,15 @@ class VacationPlanner:
             else:
                 formatted_history.append(AIMessage(content=msg["content"]))
 
-        # FIX: We now provide BOTH 'interests' for the prompt and 'user_notes' for the human chat
+        # Execute Chain
+        # Note: 'interests' fills the {interests} slot in the System Prompt
+        # 'user_notes' fills the {user_notes} slot in the Human Message
         return self.chain.invoke({
             "destination": destination,
             "budget": budget,
             "days": days,
             "travel_type": travel_type,
-            "interests": interests,    # This fills {interests} in VACATION_PROMPT
-            "user_notes": interests,   # This fills {user_notes} in the human message
+            "interests": interests,    
+            "user_notes": interests,   
             "chat_history": formatted_history
         })
